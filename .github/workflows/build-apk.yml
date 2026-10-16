@@ -1,0 +1,56 @@
+name: Build Speaking Clock APK
+
+on:
+  push:
+    branches: [ "main", "master" ]
+  pull_request:
+    branches: [ "main", "master" ]
+  workflow_dispatch: # Allows 1-click manual build from GitHub Actions tab
+
+jobs:
+  build:
+    name: Build Native Android APK
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Java JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+          cache: 'gradle'
+
+      - name: Setup Gradle Build Tool
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Restore Keystore and Environment
+        run: |
+          # Restore debug.keystore from base64 if needed
+          if [ -f debug.keystore.base64 ] && [ ! -f debug.keystore ]; then
+            base64 -d debug.keystore.base64 > debug.keystore || true
+          fi
+          # Ensure .env file exists for secrets-gradle-plugin
+          if [ ! -f .env ]; then
+            cp .env.example .env 2>/dev/null || echo "GEMINI_API_KEY=" > .env
+          fi
+
+      - name: Ensure Gradlew Execution Permission
+        run: chmod +x ./gradlew || true
+
+      - name: Compile and Build Real Native APK
+        run: ./gradlew assembleDebug --no-daemon --stacktrace
+
+      - name: Prepare APK for Direct Download
+        run: |
+          mkdir -p output-apk
+          cp app/build/outputs/apk/debug/app-debug.apk output-apk/SpeakingClock-v1.0.apk
+
+      - name: Upload APK Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: SpeakingClock-Android-APK
+          path: output-apk/SpeakingClock-v1.0.apk
+          retention-days: 30
