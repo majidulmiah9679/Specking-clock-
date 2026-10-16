@@ -2,10 +2,10 @@ name: Build Speaking Clock APK
 
 on:
   push:
-    branches: [ "main", "master" ]
+    branches: [ "**" ]
   pull_request:
-    branches: [ "main", "master" ]
-  workflow_dispatch: # Allows 1-click manual trigger from GitHub Actions tab
+    branches: [ "**" ]
+  workflow_dispatch: # Allows 1-click manual build from GitHub Actions tab
 
 jobs:
   build:
@@ -23,40 +23,36 @@ jobs:
           java-version: '17'
           cache: 'gradle'
 
-      - name: Set up Android SDK Environment
-        uses: android-actions/setup-android@v3
-
-      - name: Accept Android SDK Licenses & Install Platform
+      - name: Prepare Android SDK and Environment
         run: |
-          yes | sdkmanager --licenses || true
-          sdkmanager "platforms;android-36" "build-tools;36.0.0" "platform-tools" || true
+          # 1. Accept pre-installed Android SDK licenses on Ubuntu runner
+          if [ -d "$ANDROID_HOME/cmdline-tools/latest/bin" ]; then
+            yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses || true
+          elif command -v sdkmanager >/dev/null 2>&1; then
+            yes | sdkmanager --licenses || true
+          fi
 
-      - name: Setup Gradle Build Tool
-        uses: gradle/actions/setup-gradle@v4
-
-      - name: Restore Keystore and Environment Files
-        run: |
-          # 1. Ensure .env file exists for secrets-gradle-plugin
+          # 2. Ensure .env file exists for secrets gradle plugin
           if [ ! -f .env ]; then
             cp .env.example .env 2>/dev/null || echo "GEMINI_API_KEY=" > .env
           fi
 
-          # 2. Ensure debug.keystore exists so signingConfig debugConfig never fails
+          # 3. Ensure debug.keystore exists so APK signing succeeds
           if [ ! -f debug.keystore ]; then
             if [ -f debug.keystore.base64 ]; then
               base64 -d debug.keystore.base64 > debug.keystore 2>/dev/null || true
             fi
             if [ ! -f debug.keystore ]; then
-              echo "Generating standard debug.keystore for signing..."
+              echo "Generating standard debug.keystore..."
               keytool -genkeypair -v -keystore debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US"
             fi
           fi
 
-      - name: Grant Execute Permission for Gradlew
-        run: chmod +x ./gradlew
+          # 4. Make gradlew executable
+          chmod +x ./gradlew
 
       - name: Compile and Build Real Native APK
-        run: ./gradlew assembleDebug --no-daemon --stacktrace
+        run: ./gradlew assembleDebug --no-daemon --no-configuration-cache --stacktrace
 
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
