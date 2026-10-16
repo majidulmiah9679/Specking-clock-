@@ -1,0 +1,19 @@
+<resources>
+    <string name="app_name">Speaking Clock</string>
+    <string name="service_notification_channel_name">Speaking Clock Service</string>
+    <string name="service_notification_channel_desc">Shows active speaking clock service and next announcement</string>
+    <string name="announcement_notification_channel_name">Time Announcements</string>
+    <string name="announcement_notification_channel_desc">Notifications when time is announced</string>
+    <string name="status_running">Active &amp; Speaking</string>
+    <string name="status_paused">Paused</string>
+    <string name="status_stopped">Stopped</string>
+    <string name="action_start">Start Clock</string>
+    <string name="action_pause">Pause</string>
+    <string name="action_resume">Resume</string>
+    <string name="action_stop">Stop Clock</string>
+    <string name="action_test_voice">Test Voice</string>
+    <string name="interval_15m">Every 15 min</string>
+    <string name="interval_30m">Every 30 min</string>
+    <string name="interval_1h">Every 1 hour</string>
+    <string name="interval_custom">Custom</string>
+</resources>

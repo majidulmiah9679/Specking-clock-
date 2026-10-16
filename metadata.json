@@ -1,0 +1,6 @@
+{
+  "name": "Speaking Clock",
+  "description": "A native speaking clock that announces the time aloud in English, Bengali, and Hindi at customizable intervals, even when the screen is turned off.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
