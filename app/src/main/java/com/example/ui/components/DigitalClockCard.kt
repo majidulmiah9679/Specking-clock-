@@ -152,6 +152,22 @@ fun DigitalClockCard(
                         color = MaterialTheme.colorScheme.primary
                     )
                 }
+
+                // Voice gender indicator badge
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.5f))
+                        .padding(horizontal = 10.dp, vertical = 6.dp)
+                ) {
+                    Text(
+                        text = if (settings.voiceGender == com.example.model.VoiceGender.FEMALE) "♀ মহিলা কণ্ঠ" else settings.voiceGender.displayName,
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onTertiaryContainer
+                    )
+                }
             }
 
             Spacer(modifier = Modifier.height(18.dp))

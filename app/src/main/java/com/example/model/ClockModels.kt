@@ -63,11 +63,19 @@ enum class SpeechAvailabilityStatus {
     NOT_SUPPORTED
 }
 
+enum class VoiceGender(val displayName: String, val nativeName: String) {
+    FEMALE("Female", "মহিলা কণ্ঠ (Female)"),
+    MALE("Male", "পুরুষ কণ্ঠ (Male)"),
+    DEFAULT("System Default", "সিস্টেম ডিফল্ট")
+}
+
 data class ClockSettings(
     val status: ServiceStatus = ServiceStatus.STOPPED,
     val intervalPreset: IntervalPreset = IntervalPreset.EVERY_15_MIN,
     val customIntervalMinutes: Int = 15,
     val language: ClockLanguage = ClockLanguage.ENGLISH,
+    val voiceGender: VoiceGender = VoiceGender.FEMALE,
+    val screenOffAlwaysActive: Boolean = true,
     val speechRate: Float = 1.0f,
     val speechPitch: Float = 1.0f,
     val is24HourFormat: Boolean = false,

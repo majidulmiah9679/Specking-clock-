@@ -112,6 +112,7 @@ class TtsManager(private val context: Context) : TextToSpeech.OnInitListener {
     suspend fun speakText(
         text: String,
         language: ClockLanguage,
+        voiceGender: com.example.model.VoiceGender = com.example.model.VoiceGender.FEMALE,
         rate: Float = 1.0f,
         pitch: Float = 1.0f,
         playChime: Boolean = true,
@@ -139,7 +140,7 @@ class TtsManager(private val context: Context) : TextToSpeech.OnInitListener {
         val locale = getLocaleForLanguage(language)
         tts.language = locale
         tts.setSpeechRate(rate.coerceIn(0.5f, 2.0f))
-        tts.setPitch(pitch.coerceIn(0.5f, 2.0f))
+        applyVoice(tts, locale, voiceGender, pitch)
 
         requestAudioFocus()
 
@@ -254,5 +255,56 @@ class TtsManager(private val context: Context) : TextToSpeech.OnInitListener {
         } catch (e: Exception) {
             // Ignore permission or hardware issues
         }
+    }
+
+    private fun applyVoice(
+        tts: TextToSpeech,
+        locale: Locale,
+        gender: com.example.model.VoiceGender,
+        basePitch: Float
+    ) {
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                val availableVoices = tts.voices
+                if (!availableVoices.isNullOrEmpty()) {
+                    val localeVoices = availableVoices.filter {
+                        it.locale.language.equals(locale.language, ignoreCase = true)
+                    }
+                    if (localeVoices.isNotEmpty()) {
+                        val matchedVoice = when (gender) {
+                            com.example.model.VoiceGender.FEMALE -> {
+                                localeVoices.firstOrNull { v ->
+                                    val n = v.name.lowercase()
+                                    n.contains("female") || n.contains("-f-") || n.contains("fem") ||
+                                    n.contains("bnc") || n.contains("cfc") || n.contains("sfg") ||
+                                    (v.features != null && v.features.any { f -> f.lowercase().contains("female") })
+                                } ?: localeVoices.firstOrNull { !it.name.lowercase().contains("male") }
+                            }
+                            com.example.model.VoiceGender.MALE -> {
+                                localeVoices.firstOrNull { v ->
+                                    val n = v.name.lowercase()
+                                    n.contains("male") || n.contains("-m-") ||
+                                    (v.features != null && v.features.any { f -> f.lowercase().contains("male") })
+                                }
+                            }
+                            com.example.model.VoiceGender.DEFAULT -> null
+                        }
+                        if (matchedVoice != null) {
+                            tts.voice = matchedVoice
+                        }
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            // Best effort voice pack selection
+        }
+
+        // Natural formant pitch adjustment for feminine sweetness and clarity
+        val adjustedPitch = when (gender) {
+            com.example.model.VoiceGender.FEMALE -> (basePitch * 1.25f).coerceIn(0.5f, 2.0f)
+            com.example.model.VoiceGender.MALE -> (basePitch * 0.88f).coerceIn(0.5f, 2.0f)
+            com.example.model.VoiceGender.DEFAULT -> basePitch.coerceIn(0.5f, 2.0f)
+        }
+        tts.setPitch(adjustedPitch)
     }
 }

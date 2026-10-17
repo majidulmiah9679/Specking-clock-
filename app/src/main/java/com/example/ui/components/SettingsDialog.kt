@@ -66,6 +66,8 @@ fun SettingsDialog(
     aiStatusMessage: String?,
     onDismiss: () -> Unit,
     onSelectLanguage: (ClockLanguage) -> Unit,
+    onSelectVoiceGender: (com.example.model.VoiceGender) -> Unit,
+    onToggleScreenOffAlways: (Boolean) -> Unit,
     onUpdateSpeechRate: (Float) -> Unit,
     onUpdateSpeechPitch: (Float) -> Unit,
     onToggle24h: (Boolean) -> Unit,
@@ -194,6 +196,40 @@ fun SettingsDialog(
                                 Text("Install Voice Data")
                             }
                         }
+                    }
+                }
+
+                HorizontalDivider()
+
+                // Voice Gender Selection (Female Voice / Male Voice)
+                Text(
+                    text = "Voice Gender / কণ্ঠস্বর",
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.primary
+                )
+
+                com.example.model.VoiceGender.values().forEach { gender ->
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(12.dp))
+                            .clickable { onSelectVoiceGender(gender) }
+                            .padding(vertical = 4.dp, horizontal = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        RadioButton(
+                            selected = settings.voiceGender == gender,
+                            onClick = { onSelectVoiceGender(gender) },
+                            modifier = Modifier.testTag("gender_radio_${gender.name}")
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = gender.nativeName,
+                            style = MaterialTheme.typography.bodyLarge,
+                            fontWeight = if (gender == com.example.model.VoiceGender.FEMALE) FontWeight.Bold else FontWeight.Medium,
+                            color = if (gender == com.example.model.VoiceGender.FEMALE) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
+                        )
                     }
                 }
 
@@ -347,6 +383,23 @@ fun SettingsDialog(
                         checked = settings.autoRestartOnBoot,
                         onCheckedChange = onToggleAutoRestart,
                         modifier = Modifier.testTag("toggle_auto_restart")
+                    )
+                }
+
+                // Screen-Off Always Active toggle
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text("Screen-Off Always Active (স্ক্রিন অফ থাকলেও চালু)", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
+                        Text("Holds safe background wake lock so the clock speaks reliably when the screen is locked/off", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                    Switch(
+                        checked = settings.screenOffAlwaysActive,
+                        onCheckedChange = onToggleScreenOffAlways,
+                        modifier = Modifier.testTag("toggle_screen_off_always")
                     )
                 }
 

@@ -61,11 +61,13 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.ui.SpeakingClockViewModel
 import com.example.ui.components.ActionButtonsBar
 import com.example.ui.components.DigitalClockCard
+import com.example.ui.components.DownloadGuideDialog
 import com.example.ui.components.IntervalPickerSection
 import com.example.ui.components.MultiLanguagePreviewCard
 import com.example.ui.components.PermissionBanner
 import com.example.ui.components.SettingsDialog
 import com.example.ui.components.StatusCountdownCard
+import com.example.ui.components.VoiceAndScreenOffCard
 import com.example.ui.theme.SpeakingClockTheme
 
 class MainActivity : ComponentActivity() {
@@ -95,6 +97,7 @@ fun SpeakingClockScreen(viewModel: SpeakingClockViewModel) {
     val context = LocalContext.current
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     var showSettingsDialog by remember { mutableStateOf(false) }
+    var showDownloadGuideDialog by remember { mutableStateOf(false) }
 
     // Launcher for POST_NOTIFICATIONS permission
     val notificationPermissionLauncher = rememberLauncherForActivityResult(
@@ -207,6 +210,13 @@ fun SpeakingClockScreen(viewModel: SpeakingClockViewModel) {
                             settings = uiState.settings,
                             countdownSeconds = uiState.countdownSeconds
                         )
+                        VoiceAndScreenOffCard(
+                            currentGender = uiState.settings.voiceGender,
+                            screenOffAlwaysActive = uiState.settings.screenOffAlwaysActive,
+                            onSelectVoiceGender = { viewModel.updateVoiceGender(it) },
+                            onToggleScreenOff = { viewModel.updateScreenOffAlwaysActive(it) },
+                            onOpenDownloadGuide = { showDownloadGuideDialog = true }
+                        )
                     }
 
                     // Right Column: Controls, Interval, and Multilingual Preview
@@ -276,7 +286,16 @@ fun SpeakingClockScreen(viewModel: SpeakingClockViewModel) {
                         countdownSeconds = uiState.countdownSeconds
                     )
 
-                    // 3. Primary Control Action Buttons
+                    // 3. Voice Gender (Female/Male) & Screen-Off Always Active Controls
+                    VoiceAndScreenOffCard(
+                        currentGender = uiState.settings.voiceGender,
+                        screenOffAlwaysActive = uiState.settings.screenOffAlwaysActive,
+                        onSelectVoiceGender = { viewModel.updateVoiceGender(it) },
+                        onToggleScreenOff = { viewModel.updateScreenOffAlwaysActive(it) },
+                        onOpenDownloadGuide = { showDownloadGuideDialog = true }
+                    )
+
+                    // 4. Primary Control Action Buttons
                     ActionButtonsBar(
                         status = uiState.settings.status,
                         isSpeakingTest = uiState.isSpeakingTest,
@@ -288,7 +307,7 @@ fun SpeakingClockScreen(viewModel: SpeakingClockViewModel) {
                         onOpenSettings = { showSettingsDialog = true }
                     )
 
-                    // 4. Interval Selector (15m, 30m, 1h, Custom)
+                    // 5. Interval Selector (15m, 30m, 1h, Custom)
                     IntervalPickerSection(
                         selectedPreset = uiState.settings.intervalPreset,
                         customMinutes = uiState.settings.customIntervalMinutes,
@@ -297,7 +316,7 @@ fun SpeakingClockScreen(viewModel: SpeakingClockViewModel) {
                         }
                     )
 
-                    // 5. System Permissions & Battery Notice Banner
+                    // 6. System Permissions & Battery Notice Banner
                     PermissionBanner(
                         hasNotificationPermission = uiState.hasNotificationPermission,
                         canScheduleExactAlarms = uiState.canScheduleExactAlarms,
@@ -309,7 +328,7 @@ fun SpeakingClockScreen(viewModel: SpeakingClockViewModel) {
                         }
                     )
 
-                    // 6. Multilingual Announcement Preview (English, Bengali, Hindi)
+                    // 7. Multilingual Announcement Preview (English, Bengali, Hindi)
                     MultiLanguagePreviewCard(
                         calendar = uiState.currentCalendar,
                         settings = uiState.settings,
@@ -330,6 +349,8 @@ fun SpeakingClockScreen(viewModel: SpeakingClockViewModel) {
             aiStatusMessage = uiState.aiStatusMessage,
             onDismiss = { showSettingsDialog = false },
             onSelectLanguage = { viewModel.updateLanguage(it) },
+            onSelectVoiceGender = { viewModel.updateVoiceGender(it) },
+            onToggleScreenOffAlways = { viewModel.updateScreenOffAlwaysActive(it) },
             onUpdateSpeechRate = { viewModel.updateSpeechRate(it) },
             onUpdateSpeechPitch = { viewModel.updateSpeechPitch(it) },
             onToggle24h = { viewModel.update24HourFormat(it) },
@@ -340,6 +361,12 @@ fun SpeakingClockScreen(viewModel: SpeakingClockViewModel) {
             onTestAiSpeech = { viewModel.generateGeminiAiSpeechTest() },
             onTestLyriaChime = { viewModel.generateLyriaChimeTest() },
             onClearAiMessage = { viewModel.clearAiMessage() }
+        )
+    }
+
+    if (showDownloadGuideDialog) {
+        DownloadGuideDialog(
+            onDismiss = { showDownloadGuideDialog = false }
         )
     }
 }

@@ -164,6 +164,7 @@ class SpeakingClockViewModel(application: Application) : AndroidViewModel(applic
             ttsManager.speakText(
                 text = text,
                 language = currentSettings.language,
+                voiceGender = currentSettings.voiceGender,
                 rate = currentSettings.speechRate,
                 pitch = currentSettings.speechPitch,
                 playChime = currentSettings.playChime,
@@ -173,6 +174,16 @@ class SpeakingClockViewModel(application: Application) : AndroidViewModel(applic
                 }
             )
         }
+    }
+
+    fun updateVoiceGender(gender: com.example.model.VoiceGender) {
+        prefs.updateVoiceGender(gender)
+        notifyServiceSettingsChanged()
+    }
+
+    fun updateScreenOffAlwaysActive(enabled: Boolean) {
+        prefs.updateScreenOffAlwaysActive(enabled)
+        notifyServiceSettingsChanged()
     }
 
     fun updateInterval(preset: IntervalPreset, customMinutes: Int = 15) {

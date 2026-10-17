@@ -3,9 +3,14 @@ name: Build Speaking Clock APK
 on:
   push:
     branches: [ "**" ]
+    tags:
+      - "v*"
   pull_request:
     branches: [ "**" ]
   workflow_dispatch: # Allows 1-click manual build from GitHub Actions tab
+
+permissions:
+  contents: write
 
 jobs:
   build:
@@ -54,9 +59,53 @@ jobs:
       - name: Compile and Build Real Native APK
         run: ./gradlew assembleDebug --no-daemon --no-configuration-cache --stacktrace
 
-      - name: Upload APK Artifact
+      - name: Prepare APK for Direct Download
+        run: |
+          mkdir -p release_apks
+          # Find generated debug APK and copy with clean user-friendly name
+          ORIGINAL_APK=$(find app/build/outputs/apk/debug -name "*.apk" | head -n 1)
+          if [ -f "$ORIGINAL_APK" ]; then
+            echo "Found generated APK: $ORIGINAL_APK"
+            cp "$ORIGINAL_APK" release_apks/SpeakingClock.apk
+            cp "$ORIGINAL_APK" app/build/outputs/apk/debug/SpeakingClock.apk
+            ls -lh release_apks/
+          else
+            echo "Error: No APK was produced by gradle build!"
+            exit 1
+          fi
+
+      - name: Upload APK Artifact to GitHub Actions
         uses: actions/upload-artifact@v4
         with:
           name: SpeakingClock-Android-APK
-          path: app/build/outputs/apk/debug/*.apk
+          path: release_apks/SpeakingClock.apk
           retention-days: 30
+          if-no-files-found: error
+
+      - name: Publish Direct Download APK to GitHub Releases
+        if: github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v1.0.0
+          name: "Speaking Clock v1.0.0 (Direct APK Download)"
+          draft: false
+          prerelease: false
+          generate_release_notes: true
+          body: |
+            ## 📱 Speaking Clock - Real Native Android APK
+
+            ### 🚀 Direct Download Link:
+            Click **`SpeakingClock.apk`** below to download the app directly to your Android phone without needing to unzip any zip file!
+
+            ---
+            ### ✨ Features Included:
+            - 👩 **Female Voice (মহিলা কণ্ঠ):** Natural feminine voice tone for Bengali, Hindi, and English.
+            - 🔋 **100% Screen-Off Operation:** Foreground Service + Wake Lock keeps announcing when your screen is locked.
+            - 🗣️ **Multilingual Time Announcements:** Natural phrased speech for Bangla (বাংলা), Hindi (हिन्दी), and English.
+            - ⏰ **Intervals:** 15m, 30m, 1 hour, or any custom minute interval.
+            - 🔔 **Dual-tone Chime & Haptic Vibration** before announcement.
+            - ⚡ **Auto-restart on phone reboot.**
+          files: release_apks/SpeakingClock.apk
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        continue-on-error: true

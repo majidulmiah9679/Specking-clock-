@@ -42,6 +42,14 @@ class ClockPreferences(context: Context) {
         val speechRate = prefs.getFloat(KEY_SPEECH_RATE, 1.0f)
         val speechPitch = prefs.getFloat(KEY_SPEECH_PITCH, 1.0f)
         val is24h = prefs.getBoolean(KEY_IS_24H, false)
+        val genderName = prefs.getString(KEY_VOICE_GENDER, com.example.model.VoiceGender.FEMALE.name)
+            ?: com.example.model.VoiceGender.FEMALE.name
+        val voiceGender = try {
+            com.example.model.VoiceGender.valueOf(genderName)
+        } catch (e: Exception) {
+            com.example.model.VoiceGender.FEMALE
+        }
+        val screenOffAlways = prefs.getBoolean(KEY_SCREEN_OFF_ALWAYS, true)
         val announceAmPm = prefs.getBoolean(KEY_ANNOUNCE_AMPM, true)
         val playChime = prefs.getBoolean(KEY_PLAY_CHIME, true)
         val vibrate = prefs.getBoolean(KEY_VIBRATE, true)
@@ -54,6 +62,8 @@ class ClockPreferences(context: Context) {
             intervalPreset = preset,
             customIntervalMinutes = customMinutes,
             language = language,
+            voiceGender = voiceGender,
+            screenOffAlwaysActive = screenOffAlways,
             speechRate = speechRate,
             speechPitch = speechPitch,
             is24HourFormat = is24h,
@@ -115,6 +125,16 @@ class ClockPreferences(context: Context) {
         refresh()
     }
 
+    fun updateVoiceGender(gender: com.example.model.VoiceGender) {
+        prefs.edit().putString(KEY_VOICE_GENDER, gender.name).apply()
+        refresh()
+    }
+
+    fun updateScreenOffAlwaysActive(enabled: Boolean) {
+        prefs.edit().putBoolean(KEY_SCREEN_OFF_ALWAYS, enabled).apply()
+        refresh()
+    }
+
     fun updateAutoRestartBoot(enabled: Boolean) {
         prefs.edit().putBoolean(KEY_AUTO_RESTART_BOOT, enabled).apply()
         refresh()
@@ -140,6 +160,8 @@ class ClockPreferences(context: Context) {
         private const val KEY_INTERVAL_PRESET = "key_interval_preset"
         private const val KEY_CUSTOM_MINUTES = "key_custom_minutes"
         private const val KEY_LANGUAGE = "key_clock_language"
+        private const val KEY_VOICE_GENDER = "key_voice_gender"
+        private const val KEY_SCREEN_OFF_ALWAYS = "key_screen_off_always"
         private const val KEY_SPEECH_RATE = "key_speech_rate"
         private const val KEY_SPEECH_PITCH = "key_speech_pitch"
         private const val KEY_IS_24H = "key_is_24h"

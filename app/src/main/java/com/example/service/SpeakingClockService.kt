@@ -37,6 +37,8 @@ class SpeakingClockService : Service() {
     private lateinit var prefs: ClockPreferences
     private lateinit var ttsManager: TtsManager
     private var wakeLock: PowerManager.WakeLock? = null
+    private var persistentWakeLock: PowerManager.WakeLock? = null
+    private var screenOffWatchdogJob: kotlinx.coroutines.Job? = null
 
     override fun onCreate() {
         super.onCreate()
@@ -46,7 +48,14 @@ class SpeakingClockService : Service() {
         val powerManager = getSystemService(Context.POWER_SERVICE) as? PowerManager
         wakeLock = powerManager?.newWakeLock(
             PowerManager.PARTIAL_WAKE_LOCK,
-            "SpeakingClock:ServiceWakeLock"
+            "SpeakingClock:SpeechWakeLock"
+        )?.apply {
+            setReferenceCounted(false)
+        }
+
+        persistentWakeLock = powerManager?.newWakeLock(
+            PowerManager.PARTIAL_WAKE_LOCK,
+            "SpeakingClock:PersistentScreenOffWakeLock"
         )?.apply {
             setReferenceCounted(false)
         }
@@ -86,9 +95,14 @@ class SpeakingClockService : Service() {
 
     private fun handleStart(settings: ClockSettings) {
         prefs.updateStatus(ServiceStatus.RUNNING)
+        if (settings.screenOffAlwaysActive) {
+            acquirePersistentWakeLock()
+        }
         val nextTime = AlarmScheduler.calculateNextAnnouncementTime(settings)
         prefs.updateNextAnnouncement(nextTime)
         AlarmScheduler.scheduleNextAlarm(this, nextTime)
+
+        startScreenOffWatchdog()
 
         val updatedSettings = prefs.getSettings()
         startInForeground(buildNotification(updatedSettings))
@@ -96,6 +110,8 @@ class SpeakingClockService : Service() {
 
     private fun handlePause() {
         prefs.updateStatus(ServiceStatus.PAUSED)
+        stopScreenOffWatchdog()
+        releasePersistentWakeLock()
         AlarmScheduler.cancelAlarm(this)
         val updatedSettings = prefs.getSettings()
         updateForegroundNotification(updatedSettings)
@@ -104,9 +120,14 @@ class SpeakingClockService : Service() {
     private fun handleResume() {
         prefs.updateStatus(ServiceStatus.RUNNING)
         val settings = prefs.getSettings()
+        if (settings.screenOffAlwaysActive) {
+            acquirePersistentWakeLock()
+        }
         val nextTime = AlarmScheduler.calculateNextAnnouncementTime(settings)
         prefs.updateNextAnnouncement(nextTime)
         AlarmScheduler.scheduleNextAlarm(this, nextTime)
+
+        startScreenOffWatchdog()
 
         val updatedSettings = prefs.getSettings()
         updateForegroundNotification(updatedSettings)
@@ -114,10 +135,34 @@ class SpeakingClockService : Service() {
 
     private fun handleStop() {
         prefs.updateStatus(ServiceStatus.STOPPED)
+        stopScreenOffWatchdog()
+        releasePersistentWakeLock()
         AlarmScheduler.cancelAlarm(this)
         ttsManager.stop()
         stopForegroundCompat()
         stopSelf()
+    }
+
+    private fun startScreenOffWatchdog() {
+        screenOffWatchdogJob?.cancel()
+        screenOffWatchdogJob = serviceScope.launch(Dispatchers.Default) {
+            while (true) {
+                kotlinx.coroutines.delay(5000L)
+                val s = prefs.getSettings()
+                if (s.status != ServiceStatus.RUNNING) break
+                val now = System.currentTimeMillis()
+                if (s.nextAnnouncementMillis in 1..now && Math.abs(now - s.lastAnnouncedMillis) > 45_000L) {
+                    kotlinx.coroutines.withContext(Dispatchers.Main) {
+                        handleAnnounceTime(prefs.getSettings())
+                    }
+                }
+            }
+        }
+    }
+
+    private fun stopScreenOffWatchdog() {
+        screenOffWatchdogJob?.cancel()
+        screenOffWatchdogJob = null
     }
 
     private fun handleAnnounceTime(settings: ClockSettings) {
@@ -147,6 +192,7 @@ class SpeakingClockService : Service() {
             ttsManager.speakText(
                 text = textToSpeak,
                 language = settings.language,
+                voiceGender = settings.voiceGender,
                 rate = settings.speechRate,
                 pitch = settings.speechPitch,
                 playChime = settings.playChime,
@@ -171,6 +217,7 @@ class SpeakingClockService : Service() {
             ttsManager.speakText(
                 text = textToSpeak,
                 language = settings.language,
+                voiceGender = settings.voiceGender,
                 rate = settings.speechRate,
                 pitch = settings.speechPitch,
                 playChime = settings.playChime,
@@ -291,6 +338,26 @@ class SpeakingClockService : Service() {
         }
     }
 
+    private fun acquirePersistentWakeLock() {
+        try {
+            if (persistentWakeLock?.isHeld != true) {
+                persistentWakeLock?.acquire()
+            }
+        } catch (e: Exception) {
+            // Ignore
+        }
+    }
+
+    private fun releasePersistentWakeLock() {
+        try {
+            if (persistentWakeLock?.isHeld == true) {
+                persistentWakeLock?.release()
+            }
+        } catch (e: Exception) {
+            // Ignore
+        }
+    }
+
     private fun releaseWakeLockSafely() {
         try {
             if (wakeLock?.isHeld == true) {
@@ -303,7 +370,9 @@ class SpeakingClockService : Service() {
 
     override fun onDestroy() {
         super.onDestroy()
+        stopScreenOffWatchdog()
         releaseWakeLockSafely()
+        releasePersistentWakeLock()
         ttsManager.shutdown()
         serviceScope.cancel()
     }
